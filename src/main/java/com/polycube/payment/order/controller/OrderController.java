@@ -1,49 +1,33 @@
 package com.polycube.payment.order.controller;
 
+import com.polycube.payment.order.dto.CreateOrderRequest;
+import com.polycube.payment.order.dto.OrderResponse;
+import com.polycube.payment.order.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Tag(name = "Order", description = "주문 관련 API")
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
 
-    @Operation(summary = "주문 생성", description = "테스트용 주문 생성 API")
+    private final OrderService orderService;
+
+    public OrderController(OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    @Operation(summary = "주문 생성", description = "주문을 실제로 생성합니다.")
     @PostMapping
-    public Map<String, Object> createOrder(
-            @RequestParam String itemName,
-            @RequestParam int originalPrice,
-            @RequestParam Long memberId
-    ) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "주문 생성 성공");
-        response.put("itemName", itemName);
-        response.put("originalPrice", originalPrice);
-        response.put("memberId", memberId);
-        return response;
+    public OrderResponse createOrder(@Valid @RequestBody CreateOrderRequest request) {
+        return orderService.createOrder(request);
     }
 
-    @Operation(summary = "주문 단건 조회", description = "주문 ID로 주문 정보를 조회하는 테스트용 API")
+    @Operation(summary = "주문 단건 조회", description = "주문 ID로 실제 주문 정보를 조회합니다.")
     @GetMapping("/{orderId}")
-    public Map<String, Object> getOrder(@PathVariable Long orderId) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("orderId", orderId);
-        response.put("itemName", "keyboard");
-        response.put("originalPrice", 10000);
-        response.put("memberId", 1L);
-        return response;
-    }
-
-    @Operation(summary = "주문 목록 조회", description = "테스트용 주문 목록 조회 API")
-    @GetMapping
-    public Map<String, Object> getOrders() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "주문 목록 조회 성공");
-        response.put("count", 3);
-        return response;
+    public OrderResponse getOrder(@PathVariable Long orderId) {
+        return orderService.getOrder(orderId);
     }
 }

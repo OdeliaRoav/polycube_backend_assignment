@@ -1,46 +1,33 @@
 package com.polycube.payment.member.controller;
 
+import com.polycube.payment.member.dto.CreateMemberRequest;
+import com.polycube.payment.member.dto.MemberResponse;
+import com.polycube.payment.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Tag(name = "Member", description = "회원 관련 API")
 @RestController
 @RequestMapping("/members")
 public class MemberController {
 
-    @Operation(summary = "회원 생성", description = "테스트용 회원 생성 API")
+    private final MemberService memberService;
+
+    public MemberController(MemberService memberService) {
+        this.memberService = memberService;
+    }
+
+    @Operation(summary = "회원 생성", description = "회원을 실제로 생성합니다.")
     @PostMapping
-    public Map<String, Object> createMember(
-            @RequestParam String name,
-            @RequestParam String grade
-    ) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "회원 생성 성공");
-        response.put("name", name);
-        response.put("grade", grade);
-        return response;
+    public MemberResponse createMember(@Valid @RequestBody CreateMemberRequest request) {
+        return memberService.createMember(request);
     }
 
-    @Operation(summary = "회원 단건 조회", description = "회원 ID로 회원 정보를 조회하는 테스트용 API")
+    @Operation(summary = "회원 단건 조회", description = "회원 ID로 실제 회원 정보를 조회합니다.")
     @GetMapping("/{memberId}")
-    public Map<String, Object> getMember(@PathVariable Long memberId) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("memberId", memberId);
-        response.put("name", "test-user");
-        response.put("grade", "VIP");
-        return response;
-    }
-
-    @Operation(summary = "회원 목록 조회", description = "테스트용 회원 목록 조회 API")
-    @GetMapping
-    public Map<String, Object> getMembers() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "회원 목록 조회 성공");
-        response.put("count", 2);
-        return response;
+    public MemberResponse getMember(@PathVariable Long memberId) {
+        return memberService.getMember(memberId);
     }
 }

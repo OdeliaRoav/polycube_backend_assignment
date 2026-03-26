@@ -6,6 +6,7 @@ import com.polycube.payment.order.repository.OrderRepository;
 import com.polycube.payment.payment.dto.CreatePaymentRequest;
 import com.polycube.payment.payment.dto.PaymentResponse;
 import com.polycube.payment.payment.entity.Payment;
+import com.polycube.payment.payment.entity.PaymentMethod;
 import com.polycube.payment.payment.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,18 +34,29 @@ public class PaymentService {
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 주문입니다. id=" + request.getOrderId()));
 
-        int originalAmount = order.getOriginalPrice();
-        int discountAmount = discountPolicy.calculateDiscountAmount(order);
-        int finalAmount = originalAmount - discountAmount;
-
-        if (finalAmount < 0) {
-            throw new IllegalStateException("최종 결제 금액은 0원 이상이어야 합니다.");
+        if (paymentRepository.existsByOrderId(order.getId())) {
+            throw new IllegalStateException("이미 결제된 주문입니다. orderId=" + order.getId());
         }
+
+        int originalAmount = order.getOriginalPrice();
+
+        int gradeDiscountAmount = discountPolicy.calculateDiscountAmount(order);
+        int amountAfterGradeDiscount = originalAmount - gradeDiscountAmount;
+
+        int paymentMethodDiscountAmount = calculatePaymentMethodDiscount(
+                request.getPaymentMethod(),
+                amountAfterGradeDiscount
+        );
+
+        int totalDiscountAmount = gradeDiscountAmount + paymentMethodDiscountAmount;
+        int finalAmount = originalAmount - totalDiscountAmount;
+
+        validateFinalAmount(finalAmount);
 
         Payment payment = new Payment(
                 order,
                 originalAmount,
-                discountAmount,
+                totalDiscountAmount,
                 finalAmount,
                 request.getPaymentMethod(),
                 LocalDateTime.now()
@@ -59,5 +71,18 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 결제입니다. id=" + paymentId));
 
         return PaymentResponse.from(payment);
+    }
+
+    private int calculatePaymentMethodDiscount(PaymentMethod paymentMethod, int amountAfterGradeDiscount) {
+        if (paymentMethod == PaymentMethod.POINT) {
+            return amountAfterGradeDiscount * 5 / 100;
+        }
+        return 0;
+    }
+
+    private void validateFinalAmount(int finalAmount) {
+        if (finalAmount < 0) {
+            throw new IllegalStateException("최종 결제 금액은 0원 이상이어야 합니다.");
+        }
     }
 }
