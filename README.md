@@ -624,7 +624,7 @@ H2 데이터까지 반영되는지 검증하기 위한 브랜치입니다.
 특히 추가가 된 부분은 
 
 - `member`, `order`, `paymenr`에 `controller` 추가 
-- 각 도메인별 request / response DTO 추
+- 각 도메인별 request / response DTO 추가
 - Swagger에서 JSON body로 직접 요청 가능한 구조로 정리
 - API 호출 결과를 H2 DB 반영까지 확인할 수 있도록 흐름 확장
 
