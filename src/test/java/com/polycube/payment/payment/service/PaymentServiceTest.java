@@ -48,6 +48,41 @@ class PaymentServiceTest {
     private AppliedDiscountHistoryRepository appliedDiscountHistoryRepository;
 
     @Test
+    @DisplayName("VIP 회원이 신용카드로 결제하면 등급 할인만 적용된다")
+    void payForVipMemberWithCreditCardDiscount() {
+        // given
+        discountPolicyRepository.save(new DiscountPolicyEntity(
+                "VIP_FIXED_DISCOUNT",
+                DiscountCategory.GRADE,
+                MemberGrade.VIP,
+                null,
+                DiscountType.FIXED,
+                1_000,
+                true
+        ));
+
+        Member member = memberRepository.save(new Member("vip-user", MemberGrade.VIP));
+        Order order = orderRepository.save(new Order("keyboard", 20_000, member));
+
+        PaymentRequest request = new PaymentRequest(order.getId(), PaymentMethod.CREDIT_CARD);
+
+        // when
+        PaymentResult result = paymentService.pay(request);
+
+        // then
+        assertThat(result.originalAmount()).isEqualTo(20_000);
+        assertThat(result.discountAmount()).isEqualTo(1_000);
+        assertThat(result.finalAmount()).isEqualTo(19_000);
+
+        List<AppliedDiscountHistory> histories = appliedDiscountHistoryRepository.findAll();
+        assertThat(histories).hasSize(1);
+
+        AppliedDiscountHistory history = histories.get(0);
+        assertThat(history.getPolicyName()).isEqualTo("VIP_FIXED_DISCOUNT");
+        assertThat(history.getDiscountAmount()).isEqualTo(1_000);
+    }
+
+    @Test
     @DisplayName("VIP 회원이 포인트로 결제하면 등급 할인 후 결제수단 5퍼센트 할인이 중복 적용된다")
     void payForVipMemberWithPointDiscount() {
         // given
@@ -94,6 +129,41 @@ class PaymentServiceTest {
         assertThat(histories)
                 .extracting(AppliedDiscountHistory::getDiscountAmount)
                 .containsExactlyInAnyOrder(1_000, 950);
+    }
+
+    @Test
+    @DisplayName("VVIP 회원이 신용카드로 결제하면 10퍼센트 등급 할인만 적용된다")
+    void payForVvipMemberWithCreditCardDiscount() {
+        // given
+        discountPolicyRepository.save(new DiscountPolicyEntity(
+                "VVIP_RATE_DISCOUNT",
+                DiscountCategory.GRADE,
+                MemberGrade.VVIP,
+                null,
+                DiscountType.RATE,
+                10,
+                true
+        ));
+
+        Member member = memberRepository.save(new Member("vvip-user", MemberGrade.VVIP));
+        Order order = orderRepository.save(new Order("laptop", 30_000, member));
+
+        PaymentRequest request = new PaymentRequest(order.getId(), PaymentMethod.CREDIT_CARD);
+
+        // when
+        PaymentResult result = paymentService.pay(request);
+
+        // then
+        assertThat(result.originalAmount()).isEqualTo(30_000);
+        assertThat(result.discountAmount()).isEqualTo(3_000);
+        assertThat(result.finalAmount()).isEqualTo(27_000);
+
+        List<AppliedDiscountHistory> histories = appliedDiscountHistoryRepository.findAll();
+        assertThat(histories).hasSize(1);
+
+        AppliedDiscountHistory history = histories.get(0);
+        assertThat(history.getPolicyName()).isEqualTo("VVIP_RATE_DISCOUNT");
+        assertThat(history.getDiscountAmount()).isEqualTo(3_000);
     }
 
     @Test
@@ -145,6 +215,7 @@ class PaymentServiceTest {
                 .containsExactlyInAnyOrder(3_000, 1_350);
     }
 
+
     @Test
     @DisplayName("정책이 수정되어도 과거 결제 이력은 결제 시점 기준으로 보존된다")
     void paymentHistoryShouldRemainAfterPolicyValueChange() {
@@ -181,6 +252,62 @@ class PaymentServiceTest {
         assertThat(history.getPolicyName()).isEqualTo("VIP_FIXED_DISCOUNT");
         assertThat(history.getDiscountValue()).isEqualTo(1_000);
         assertThat(history.getDiscountAmount()).isEqualTo(1_000);
+    }
+
+    @Test
+    @DisplayName("NORMAL 회원이 포인트로 결제하면 결제수단 할인만 적용된다")
+    void payForNormalMemberWithPointDiscount() {
+        // given
+        discountPolicyRepository.save(new DiscountPolicyEntity(
+                "POINT_EXTRA_DISCOUNT",
+                DiscountCategory.PAYMENT_METHOD,
+                null,
+                PaymentMethod.POINT,
+                DiscountType.RATE,
+                5,
+                true
+        ));
+
+        Member member = memberRepository.save(new Member("normal-user", MemberGrade.NORMAL));
+        Order order = orderRepository.save(new Order("mouse", 10_000, member));
+
+        PaymentRequest request = new PaymentRequest(order.getId(), PaymentMethod.POINT);
+
+        // when
+        PaymentResult result = paymentService.pay(request);
+
+        // then
+        assertThat(result.originalAmount()).isEqualTo(10_000);
+        assertThat(result.discountAmount()).isEqualTo(500);
+        assertThat(result.finalAmount()).isEqualTo(9_500);
+
+        List<AppliedDiscountHistory> histories = appliedDiscountHistoryRepository.findAll();
+        assertThat(histories).hasSize(1);
+
+        AppliedDiscountHistory history = histories.get(0);
+        assertThat(history.getPolicyName()).isEqualTo("POINT_EXTRA_DISCOUNT");
+        assertThat(history.getDiscountAmount()).isEqualTo(500);
+    }
+
+    @Test
+    @DisplayName("NORMAL 회원이 신용카드로 결제하면 할인이 적용되지 않는다")
+    void payForNormalMemberWithCreditCardDiscount() {
+        // given
+        Member member = memberRepository.save(new Member("normal-user", MemberGrade.NORMAL));
+        Order order = orderRepository.save(new Order("mouse", 10_000, member));
+
+        PaymentRequest request = new PaymentRequest(order.getId(), PaymentMethod.CREDIT_CARD);
+
+        // when
+        PaymentResult result = paymentService.pay(request);
+
+        // then
+        assertThat(result.originalAmount()).isEqualTo(10_000);
+        assertThat(result.discountAmount()).isEqualTo(0);
+        assertThat(result.finalAmount()).isEqualTo(10_000);
+
+        List<AppliedDiscountHistory> histories = appliedDiscountHistoryRepository.findAll();
+        assertThat(histories).isEmpty();
     }
 
     @Test
